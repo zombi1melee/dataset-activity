@@ -1,0 +1,270 @@
+## Review of Personal Monitoring Device
+
+Due to the ever increasing capacity to collect large amounts of data, personal data devices such as Fitbit and Jawbone are increasing becoming a part of everyday life.  These particular devices take measurments in the quest to find behavior patterns and to improve ones health.  
+
+The review uses data from a personal activity device that collected data at 5 minute intervals, during the month of October and November 2012. 
+<!-- For more info on RMarkdown see http://rmarkdown.rstudio.com/ -->
+
+### Data
+
+The data variables include:
+
+* steps - Number of steps taken in 5 minute intervals.
+* date - A date the measurements were taken.
+* interval - 5 minute interval identifier.
+
+### Data Processing
+  
+```{r libraryload, echo=TRUE }
+library("data.table") # Data storage.
+library("assertthat") # Useful test.
+library("chron")      # Convenient date storage.
+library("Hmisc")      # Check attributes.
+library("mice")       # mice imputation. 
+```
+```{r, personaloptions}
+# List of options.
+Sys.setlocale()
+op <- options()
+options(digits = 3)    
+```
+The analysis begins by defining a monitor object which contain member variables and functions that are members of the monitor class.
+```{r monitorclass}
+# Monitor class definition and functions.
+getName <- function(.Object) {return(.Object@activityName)}
+getActivity <- function(.Object) {return(.Object@activity)}
+getClass <- function(.Object) {return(sapply(.Object@activity, class))}
+summary <- function(.Object) {
+  # Calculates mean, median, and total number of steps each day.
+  # Total steps per day with NAs and zeros removed.
+  # Zeros removed to facilitate median calculations.
+  .Object@activity[!is.na(steps) & (steps > 0), 
+                                   .(count = .N,
+                                   steps = sum(steps),
+                                   min = min(steps),
+                                   max = max(steps),
+                                   mean = mean(steps),
+                                   median = median(steps)),
+                                   by = date]
+}
+# totalMissing returns number of NAs. 
+totalMissing <- function(.Object) {return(sum(is.na(.Object@activity)))}
+
+setClass(
+  Class = "Monitor", 
+  slots = c(
+    name = "character", 
+    activity = "data.table"
+  )
+)
+setGeneric(
+  name = "gname", 
+  def = function(.Object) {standardGeneric("gname")}
+)
+setGeneric(
+  name = "gactivity",
+  def = function(.Object) {standardGeneric("gactivity")}
+) 
+setGeneric(
+  name = "gclass",
+  def = function(.Object) {standardGeneric("gclass")}
+)
+setGeneric(
+  name = "gsummary",
+  def = function(.Object) {standardGeneric("gsummary")}
+)
+setGeneric(
+  name = "totMissing",
+  def = function(.Object) {stanardGeneric("totMissing")}
+  )
+setMethod("gname",signature("Monitor"), getName)
+setMethod("gactivity",signature("Monitor"), getActivity)
+setMethod("gclass",signature("Monitor"), getClass)
+setMethod("initialize", "Monitor", function(.Object, ...) {
+  .Object <- callNextMethod()
+  # Automatically sets classes on object construction. 
+  # as.chron reads dates as numeric.                                           
+  .Object@activity[,date := as.chron(as.IDate(date))] 
+  .Object@activity[,steps := as.numeric(steps)]
+  .Object@activity[,interval := as.numeric(interval)]
+  # Create weekday and weekend variables. 
+  .Object@activity[,wkdy := weekdays(date, abbreviate = TRUE)]
+  .Object@activity[,day := {ifelse(weekdays(date) == "Sat","weekend",
+          ifelse(weekdays(date) == "Sun", "weekend", "weekday"))},]
+  # Factor variables.
+  .Object@activity[,day := factor(day)]
+  .Object@activity[, wkdy := factor(wkdy)]
+  .Object
+})
+setMethod("gsummary",signature("Monitor"), summary)
+setMethod("totMissing",signature("Monitor"), totalMissing)
+```
+
+```{r helperfunctions}
+createDir <- function(dir_name, file_name) {
+  # Create directory to hold downloaded file.
+  if(!file.exists(dir_name)) {
+    dir.create(dir_name)
+  }
+  # Unzip file into data directory.
+  if(file.exists(file_name) & has_extension(file_name, "zip")) {
+    unzip(zipfile = file_name, exdir = path.expand(dir_name))
+    list.files(dir_name)
+    return(TRUE)
+  }
+}
+# Read dataset function.
+loadDataset <- function(input, ...) {
+  dataset = NULL
+  try(dataset <- fread(input = input, ...), silent = TRUE)
+  cat(sprintf("Processing dataset...\n"))
+  return(dataset)
+}
+# Read data into monitor class.
+monitorDv <- function(activity) {
+  if(missing(activity)) {
+    createDir("data", "repdata-data-activity.zip")  
+    data <- loadDataset("./data/activity.csv", header = TRUE, sep = ",")
+    new(Class = "Monitor", activity = data)  
+  }
+  else {
+    new(Class = "Monitor", activity = activity)
+  }
+}
+```
+
+### Load data
+```{r constructor, cache = TRUE}
+# Construct a personal activity monitor device.
+pamd <- monitorDv()
+# Return activity data.
+activity <- getActivity(pamd)
+```
+
+### Check data
+```{r datachecks}
+getClass(pamd)
+dim(activity)
+names(activity)
+```
+### Mean total number of steps per day
+```{r histogramsteps, fig.width = 4, fig.height = 4, cache = TRUE}
+# Returns mean and median calculations of total number of steps per day.
+(s <-summary(pamd))
+# Histogram of total number of steps each day
+(stp <- hist(s$steps, breaks = "Sturges", plot = FALSE))
+plot(stp, border = "black", col = "limegreen", 
+     main = "Histogram of total steps",
+     xlab = "Number of Steps", labels = TRUE,
+     ylim=c(0, 30))
+     # Distribution of values, jittered. 
+     rug(jitter(s$steps, amount = 0.01))
+```
+
+### Average daily pattern
+```{r timeseriesplot, fig.width = 5, fig.height = 4, cache = TRUE}
+# Time series plot of 5 minute interval averaged over number of steps.
+a <- activity[!is.na(steps), .(steps = mean(steps)), by = interval]
+par(lty = 1, pch = 19)
+plot(a$steps ~ a$interval, 
+     type = "l", lwd = 1.3, col = "darkgreen",
+     main = "Average daily steps activity",
+     sub = "5 minute intervals",
+     xlab = "Interval", ylab = "Number of Steps (averaged)", bg = "seashell")
+```
+```{r maxinterval}
+# 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps.
+a[which.max(a$steps),]
+```
+
+
+### Imputation
+```{r imputation, cache = TRUE}
+# Return number of rows that contain NAs. 
+totalMissing(pamd)
+sum(activity[,!complete.cases(activity)])
+library("VIM")
+aggr(activity, prop = FALSE, numbers = TRUE)
+
+# Imputation
+# Another way to count missing values.
+md.pattern(activity)
+
+# Multiple imputation with chain equations to calculate missing values.
+# One method is to use predictive mean matching (pmm), which is the default for numerical values for mice. 
+# Dry run in order to change default values.
+ini <- mice(activity, maxit = 0)
+pred <- ini$predictorMatrix
+# Remove weekend and weekday variables as predictors.
+pred[, "day"] <- 0
+pred[, "wkdy"] <- 0
+# Create 3 multiple imputations and store datasets in imp object.
+imp <- mice(activity, pred = pred, pri = FALSE, m = 3, seed = 4321)
+```
+
+```{r stepsimputation, eval = TRUE}
+# Steps imputation stored here. 
+# Each column represents the three imputted dataset.
+# Show the first ten rows.
+imp$imp$steps[1:10,]
+```
+
+```{r diagnosis, cache = TRUE}
+# A scatterplot and stripplot are drawn that combines steps and interval for each imputted dataset.
+# Red points represent the imputted values while blue points represent the observed values.
+# The red points practically overlap the blue points leading to possible measurements.  
+# However, additional tests should be carried out to validate measurements.
+stripplot(imp, pch = 20, cex = 1.2)
+```
+```{r diagnosis2, eval = TRUE, cache = TRUE}
+xyplot(imp, steps ~ interval | .imp, pch = 20, cex = 1.4)
+```
+```{r completedataset}
+# A new dataset with missing data filled in is created.
+# The complete dataset includes inputted data with observed data.
+# The first dataset is selected.
+comDt <- as.data.table(complete(imp, 1))
+```
+```{r meanimputted }
+# Mean and median calculation using imputted data.
+(s1 <- comDt[(steps > 0), 
+            .(
+            mean = mean(steps),
+            median = median(steps),
+            steps = sum(steps)
+            ), 
+            by = date])
+```
+```{r histimp, fig.width = 4, fig.height = 4, cache = TRUE}
+# Histogram of imputted data.
+(stp <- hist(s1$steps, breaks = "Sturges", plot = FALSE))
+plot(stp, border = "black", col = "limegreen", 
+     main = "Histogram of total steps", 
+     xlab = "Number of Steps", labels = TRUE,
+     ylim=c(0, 35))
+     rug(jitter(s1$steps, amount = 0.01))
+# Values in the range of 5000 to 15000 steps have increased. 
+# One result of imputting missing data is the ability to use more data thus leading to a 
+# more complete assessment.
+```
+
+### Activity patterns on weekend and weekdays
+
+```{r weekendpatterns, cache = TRUE}
+# Dataset with imputted variables.
+s2 <- comDt[, 
+     .(
+     steps = sum(steps)
+     ), 
+     by = .(interval, day)]
+```
+```{r weekendplot}
+xyplot(steps ~ interval | day,
+    data = s2, 
+    layout = c(1,2),
+    panel = function(x, y) {
+    panel.grid(h = -1, v = 2)
+    panel.xyplot(x, y, type = "l")
+})
+```
+
