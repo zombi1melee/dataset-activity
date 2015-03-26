@@ -58,28 +58,12 @@ setClass(
   )
 )
 setGeneric(
-  name = "gname", 
-  def = function(.Object) {standardGeneric("gname")}
+  name = "activityNms", 
+  def = function(.Object) {standardGeneric("activityNms")}
 )
-setGeneric(
-  name = "gactivity",
-  def = function(.Object) {standardGeneric("gactivity")}
-) 
-setGeneric(
-  name = "gclass",
-  def = function(.Object) {standardGeneric("gclass")}
-)
-setGeneric(
-  name = "gsummary",
-  def = function(.Object) {standardGeneric("gsummary")}
-)
-setGeneric(
-  name = "totMissing",
-  def = function(.Object) {stanardGeneric("totMissing")}
-  )
-setMethod("gname",signature("Monitor"), getName)
-setMethod("gactivity",signature("Monitor"), getActivity)
-setMethod("gclass",signature("Monitor"), getClass)
+setMethod("activityNms",signature("Monitor"), getName)
+setMethod("activityNms",signature("Monitor"), getActivity)
+setMethod("activityNms",signature("Monitor"), getClass)
 setMethod("initialize", "Monitor", function(.Object, ...) {
   .Object <- callNextMethod()
   # Automatically sets classes on object construction. 
@@ -96,8 +80,8 @@ setMethod("initialize", "Monitor", function(.Object, ...) {
   .Object@activity[, wkdy := factor(wkdy)]
   .Object
 })
-setMethod("gsummary",signature("Monitor"), summary)
-setMethod("totMissing",signature("Monitor"), totalMissing)
+setMethod("activityNms",signature("Monitor"), summary)
+setMethod("activityNms",signature("Monitor"), totalMissing)
 ```
 
 ```{r helperfunctions}
@@ -213,7 +197,7 @@ imp$imp$steps[1:10,]
 # A scatterplot and stripplot are drawn that combines steps and interval for each imputted dataset.
 # Red points represent the imputted values while blue points represent the observed values.
 # The red points practically overlap the blue points leading to possible measurements.  
-# However, additional tests should be carried out to validate measurements.
+# However, additional tests should be carried out to validate the measurements.
 stripplot(imp, pch = 20, cex = 1.2)
 ```
 ```{r diagnosis2, eval = TRUE, cache = TRUE}

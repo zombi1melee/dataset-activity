@@ -68,81 +68,37 @@ setClass(
   )
 )
 setGeneric(
-  name = "gname", 
-  def = function(.Object) {standardGeneric("gname")}
+  name = "activityNms", 
+  def = function(.Object) {standardGeneric("activityNms")}
 )
 ```
 
 ```
-## [1] "gname"
+## [1] "activityNms"
 ```
 
 ```r
-setGeneric(
-  name = "gactivity",
-  def = function(.Object) {standardGeneric("gactivity")}
-) 
+setMethod("activityNms",signature("Monitor"), getName)
 ```
 
 ```
-## [1] "gactivity"
+## [1] "activityNms"
 ```
 
 ```r
-setGeneric(
-  name = "gclass",
-  def = function(.Object) {standardGeneric("gclass")}
-)
+setMethod("activityNms",signature("Monitor"), getActivity)
 ```
 
 ```
-## [1] "gclass"
+## [1] "activityNms"
 ```
 
 ```r
-setGeneric(
-  name = "gsummary",
-  def = function(.Object) {standardGeneric("gsummary")}
-)
+setMethod("activityNms",signature("Monitor"), getClass)
 ```
 
 ```
-## [1] "gsummary"
-```
-
-```r
-setGeneric(
-  name = "totMissing",
-  def = function(.Object) {stanardGeneric("totMissing")}
-  )
-```
-
-```
-## [1] "totMissing"
-```
-
-```r
-setMethod("gname",signature("Monitor"), getName)
-```
-
-```
-## [1] "gname"
-```
-
-```r
-setMethod("gactivity",signature("Monitor"), getActivity)
-```
-
-```
-## [1] "gactivity"
-```
-
-```r
-setMethod("gclass",signature("Monitor"), getClass)
-```
-
-```
-## [1] "gclass"
+## [1] "activityNms"
 ```
 
 ```r
@@ -169,19 +125,19 @@ setMethod("initialize", "Monitor", function(.Object, ...) {
 ```
 
 ```r
-setMethod("gsummary",signature("Monitor"), summary)
+setMethod("activityNms",signature("Monitor"), summary)
 ```
 
 ```
-## [1] "gsummary"
+## [1] "activityNms"
 ```
 
 ```r
-setMethod("totMissing",signature("Monitor"), totalMissing)
+setMethod("activityNms",signature("Monitor"), totalMissing)
 ```
 
 ```
-## [1] "totMissing"
+## [1] "activityNms"
 ```
 
 
@@ -507,7 +463,7 @@ imp$imp$steps[1:10,]
 # A scatterplot and stripplot are drawn that combines steps and interval for each imputted dataset.
 # Red points represent the imputted values while blue points represent the observed values.
 # The red points practically overlap the blue points leading to possible measurements.  
-# However, additional tests should be carried out to validate measurements.
+# However, additional tests should be carried out to validate the measurements.
 stripplot(imp, pch = 20, cex = 1.2)
 ```
 
